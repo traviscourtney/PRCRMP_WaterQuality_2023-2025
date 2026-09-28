@@ -205,7 +205,7 @@ DIC_Q1=read_excel("Data/1st_quarter_Lab_parameters.xlsx",sheet="DIC") %>%
   filter(`QA Flag`==c("A","Q")) %>% 
   filter(str_detect(`Sample Name`,  regex("CRM", ignore_case = TRUE))) %>% 
   group_by(`Sample # In Batch`) %>% 
-mutate(`DIC (uM)`=mean(as.numeric(`DIC_final (uM)`))) %>% 
+  mutate(`DIC (uM)`=mean(as.numeric(`DIC_final (uM)`))) %>% 
   filter (! duplicated(`Sample # In Batch`)) %>% 
   ungroup() %>% 
   select(`Sample Name`,`DIC (uM)`)
@@ -277,8 +277,27 @@ DIC_CRM_known=read_excel("CRM_TA_DIC.xlsx") %>%
   select(`CRM`,`DIC (uM)`) %>% 
   rename(`CRM DIC (uM)`=`DIC (uM)`)
 
-DIC_CRM_accuracy_percent=left_join(DIC_CRM,DIC_CRM_known,by="CRM") %>% 
-  summarize(accuracy=mean(((as.numeric(`DIC (uM)`)-`CRM DIC (uM)`)/`CRM DIC (uM)`)*100,na.rm=TRUE))
+DIC_CRM_Q1=DIC_Q1 %>% 
+  mutate(CRM=as.numeric(substr(`Sample Name`,5,7)))
+
+DIC_CRM=rbind(DIC_Q2,DIC_Q3,DIC_Q4,DIC_Q5,DIC_Q6,DIC_Q7,DIC_Q8) %>% 
+  mutate(CRM=as.numeric(substr(`Sample Name`,5,7)))
+
+#CRM in Q1 were analyzed as umol/kg whereas later quarters were analyzed as uM and converted to umol/kg in subsequent calculations so Q1 must be treated differently for evaluation of CRM
+DIC_CRM_known_Q1=read_excel("CRM_TA_DIC.xlsx") %>% 
+  filter(CRM==204) %>% 
+  select(`CRM`,`DIC (umol/kg)`) %>% 
+  rename(`CRM DIC`=`DIC (umol/kg)`)
+
+DIC_CRM_known_other=read_excel("CRM_TA_DIC.xlsx") %>% 
+  filter(CRM!=204) %>% 
+  select(`CRM`,`DIC (uM)`) %>% 
+  rename(`CRM DIC`=`DIC (uM)`)
+
+DIC_CRM_accuracy_percent=rbind(
+  left_join(DIC_CRM_Q1,DIC_CRM_known_Q1,by="CRM"),
+  left_join(DIC_CRM,DIC_CRM_known_other,by="CRM")) %>% 
+  summarize(accuracy=mean(((as.numeric(`DIC (uM)`)-`CRM DIC`)/`CRM DIC`)*100,na.rm=TRUE))
 
 #Calculate NOx Lab Accuracy
 NOx_Accuracy_percent=read_excel("NOx_PO4_CRM_Accuracy.xlsx") %>% 
